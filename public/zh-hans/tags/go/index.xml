@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Go on Hugo Narrow</title>
+		<link>http://localhost:1313/zh-hans/tags/go/</link>
+		<description>Recent content in Go on Hugo Narrow</description>
+		<generator>Hugo</generator>
+		<language>zh-hans</language>
+		
+		
+		
+		
+			<lastBuildDate>Tue, 20 Feb 2024 14:30:00 +0800</lastBuildDate>
+		
+			<atom:link href="http://localhost:1313/zh-hans/tags/go/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Hugo - 世界上最快的网站构建框架</title>
+				<link>http://localhost:1313/zh-hans/projects/hugo-framework/</link>
+				<pubDate>Tue, 20 Feb 2024 14:30:00 +0800</pubDate>
+				<guid>http://localhost:1313/zh-hans/projects/hugo-framework/</guid>
+				<description>使用 Go 构建的快速灵活的静态站点生成器，为全球数千个网站提供支持。</description>
+			</item>
+	</channel>
+</rss>

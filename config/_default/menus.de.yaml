@@ -1,0 +1,92 @@
+main:
+  - name: Beiträge
+    pageRef: /posts
+    weight: 10
+    params:
+      icon: posts
+
+  - name: Archiv
+    pageRef: /archives
+    weight: 20
+    params:
+      icon: archive
+
+  # Beispiel: Übergeordnetes Element mit Dropdown-Untermenü
+  - name: Mehr
+    weight: 30
+    params:
+      icon: layers
+
+  - name: Kategorien
+    weight: 1
+    pageRef: /categories
+    parent: Mehr
+    params:
+      icon: categories
+
+  - name: Tags
+    weight: 2
+    pageRef: /tags
+    parent: Mehr
+    params:
+      icon: tags
+
+  - name: Serien
+    weight: 3
+    pageRef: /series
+    parent: Mehr
+    params:
+      icon: bookmark
+
+  - name: Projekte
+    weight: 4
+    pageRef: /projects
+    parent: Mehr
+    params:
+      icon: projects
+
+
+
+# Fußzeilen-Menü
+footer:
+
+  - name: Über mich
+    pageRef: /about
+    weight: 20
+    params:
+      icon: about
+
+  - name: Lebenslauf
+    pageRef: /resume
+    weight: 25
+    params:
+      icon: file-text
+
+  - name: RSS-Feed
+    url: /index.xml
+    weight: 30
+    params:
+      icon: rss
+
+# Social-Media-Links in der Fußzeile
+social:
+  - name: GitHub
+    url: https://github.com/4m3rr0r
+    weight: 10
+    params:
+      icon: github
+  - name: Twitter
+    url: https://twitter.com/4m3rr0r
+    weight: 20
+    params:
+      icon: twitter
+  - name: LinkedIn
+    url: https://linkedin.com/in/4m3rr0r
+    weight: 30
+    params:
+      icon: linkedin
+  - name: Youtube
+    url: https://youtube.com/@4m3rr0r
+    weight: 35
+    params:
+      icon: youtube

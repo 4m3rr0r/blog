@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Startseite on 4m3rr0r&#39;s Blog</title>
+		<link>http://localhost:1313/de/</link>
+		<description>Recent content in Startseite on 4m3rr0r&#39;s Blog</description>
+		<generator>Hugo</generator>
+		<language>de-DE</language>
+		
+		
+		
+		
+			<lastBuildDate>Sun, 07 Jun 2026 12:00:38 +0600</lastBuildDate>
+		
+			<atom:link href="http://localhost:1313/de/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Missbrauch der eingeschränkten Delegation ohne lokale Administratorrechte</title>
+				<link>http://localhost:1313/de/posts/missbrauch-der-eingeschr%C3%A4nkten-delegation-ohne-lokale-administratorrechte/</link>
+				<pubDate>Sun, 07 Jun 2026 12:00:38 +0600</pubDate>
+				<guid>http://localhost:1313/de/posts/missbrauch-der-eingeschr%C3%A4nkten-delegation-ohne-lokale-administratorrechte/</guid>
+				<description>&lt;p&gt;Es gibt ein hartnäckiges Missverständnis beim Penetration Testing von Active Directory: Viele glauben, dass man für einen Angriff auf die eingeschränkte Delegation (Constrained Delegation) zuerst einen Host kompromittieren, lokale Administratorrechte erlangen und Anmeldedaten aus dem Speicher auslesen muss.&lt;/p&gt;&#xA;&lt;p&gt;Das Auslesen von LSASS ist zwar ein Standardweg, aber keineswegs eine zwingende Voraussetzung. Wenn es sich beim Ziel um ein Benutzerkonto mit einem schwachen Passwort handelt, kann ein normaler Domänenbenutzer einen vollständigen Delegationsangriff durchführen. Dadurch lässt sich eine Identitätsübernahme (Impersonation) des Domänen-Administrators komplett über das Netzwerk realisieren – ohne jemals die Festplatte eines Ziel-Endpunkts zu berühren oder erhöhte Berechtigungen zu benötigen.&lt;/p&gt;</description>
+			</item>
+	</channel>
+</rss>

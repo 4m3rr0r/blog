@@ -1,0 +1,91 @@
+main:
+  - name: সব লেখা
+    pageRef: /posts
+    weight: 10
+    params:
+      icon: posts
+
+  - name: লেখার সংগ্রহ
+    pageRef: /archives
+    weight: 20
+    params:
+      icon: archive
+
+  - name: আরও
+    weight: 30
+    params:
+      icon: layers
+
+  - name: বিষয়ভিত্তিক বিভাগ
+    weight: 1
+    pageRef: /categories
+    parent: আরও
+    params:
+      icon: categories
+
+  - name: ট্যাগসমূহ
+    weight: 2
+    pageRef: /tags
+    parent: আরও
+    params:
+      icon: tags
+
+  - name: ধারাবাহিক লেখাসমূহ
+    weight: 3
+    pageRef: /series
+    parent: আরও
+    params:
+      icon: bookmark
+
+  - name: প্রকল্পসমূহ
+    weight: 4
+    pageRef: /projects
+    parent: আরও
+    params:
+      icon: projects
+
+
+footer:
+
+  - name: পরিচিতি
+    pageRef: /about
+    weight: 20
+    params:
+      icon: about
+
+  - name: জীবনবৃত্তান্ত
+    pageRef: /resume
+    weight: 25
+    params:
+      icon: file-text
+
+  - name: RSS ফিড
+    url: /index.xml
+    weight: 30
+    params:
+      icon: rss
+
+social:
+  - name: GitHub
+    url: https://github.com/4m3rr0r
+    weight: 10
+    params:
+      icon: github
+
+  - name: Twitter
+    url: https://twitter.com/4m3rr0r
+    weight: 20
+    params:
+      icon: twitter
+
+  - name: LinkedIn
+    url: https://linkedin.com/in/4m3rr0r
+    weight: 30
+    params:
+      icon: linkedin
+
+  - name: YouTube
+    url: https://youtube.com/@4m3rr0r
+    weight: 35
+    params:
+      icon: youtube
