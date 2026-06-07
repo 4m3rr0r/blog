@@ -118,10 +118,10 @@ comments:
   # giscus, disqus, utterances, waline, artalk, twikoo, comentario
   system: "giscus"
   giscus:
-    repo: "tom2almighty/hugo-narrow-giscus"
-    repoId: "R_kgDOO2gwLg"
-    category: "General"
-    categoryId: "DIC_kwDOO2gwLs4CrEaf"
+    repo: "4m3rr0r/blog"
+    repoId: "R_kgDOSzSdyg"
+    category: "Announcements"
+    categoryId: "DIC_kwDOSzSdys4C-sV3"
     mapping: "pathname"
     strict: "0"
     reactionsEnabled: "1"
