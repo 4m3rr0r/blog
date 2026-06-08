@@ -3,6 +3,27 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://localhost:1313/posts/</loc>
+    <lastmod>2026-06-08T13:35:44+06:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="http://localhost:1313/posts/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="bn"
+                href="http://localhost:1313/bn/posts/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="de-DE"
+                href="http://localhost:1313/de/posts/"
+                />
+  </url><url>
+    <loc>http://localhost:1313/posts/the-guide-to-kerberos-delegation-that-wont-make-your-brain-hurt/</loc>
+    <lastmod>2026-06-08T13:35:44+06:00</lastmod>
+  </url><url>
     <loc>http://localhost:1313/posts/abusing-constrained-delegation-without-local-admin/</loc>
     <lastmod>2026-06-07T12:00:38+06:00</lastmod>
     <xhtml:link
@@ -19,24 +40,6 @@
                 rel="alternate"
                 hreflang="de-DE"
                 href="http://localhost:1313/de/posts/missbrauch-der-eingeschr%C3%A4nkten-delegation-ohne-lokale-administratorrechte/"
-                />
-  </url><url>
-    <loc>http://localhost:1313/posts/</loc>
-    <lastmod>2026-06-07T12:00:38+06:00</lastmod>
-    <xhtml:link
-                rel="alternate"
-                hreflang="en"
-                href="http://localhost:1313/posts/"
-                />
-    <xhtml:link
-                rel="alternate"
-                hreflang="bn"
-                href="http://localhost:1313/bn/posts/"
-                />
-    <xhtml:link
-                rel="alternate"
-                hreflang="de-DE"
-                href="http://localhost:1313/de/posts/"
                 />
   </url><url>
     <loc>http://localhost:1313/</loc>
