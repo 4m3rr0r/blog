@@ -4,13 +4,10 @@ draft: false
 title: 'Kerberos Delegation verständlich erklärt: Der Guide ohne Kopfschmerzen'
 ---
 
-```
 
 Wenn du dich schon mal ein bisschen mit Active Directory Hacking oder Defense beschäftigt hast, bist du garantiert schon über den Begriff **Kerberos Delegation** gestolpert. In den meisten Lehrbüchern wird das mit wilden Pfeil-Diagrammen und riesigen Textwänden erklärt, sodass es am Ende viel komplizierter aussieht, als es eigentlich ist.
 
 Lass uns den ganzen Corporate-Jargon mal weglassen und ganz entspannt anschauen, was Delegation eigentlich bedeutet, wie es in der Praxis läuft und warum es für Angreifer eine absolute Goldgrube ist.
-
----
 
 ## Das große Ganze: Was ist Delegation überhaupt?
 
@@ -21,8 +18,6 @@ Die Datenbank sollte dem Webserver aber nicht einfach blind vertrauen. Wenn sie 
 Anstatt dir jetzt ein zweites Login-Fenster anzuzeigen und dich zu zwingen, dein Passwort noch einmal einzugeben, sagt der Webserver einfach: *"Hey Datenbank, dieser Nutzer hat sich gerade bei mir authentifiziert und mir die Erlaubnis gegeben, in seinem Namen zu handeln."*
 
 Diese Weitergabe deiner Identität – quasi wie eine digitale Vollmacht – nennt man **Delegation**. Im Active Directory gibt es dafür drei verschiedene Varianten.
-
----
 
 ## 1. Unconstrained Delegation: Der Wilde Westen
 
@@ -36,9 +31,8 @@ Kerberos nutzt statt Passwörtern digitale Eintrittskarten, sogenannte **Tickets
 
 Der Server nimmt deinen Ausweis und speichert (cached) ihn direkt in seinem lokalen Arbeitsspeicher (RAM), um ihn später zu nutzen.
 
-> 💥 **Der Traum eines Angreifers:** Wenn es ein Hacker schafft, Admin-Rechte auf einem Server mit Unconstrained Delegation zu bekommen, muss er sich nur noch zurücklehnen und warten. In dem Moment, in dem sich ein Domänen-Administrator (Domain Admin) für eine Routineaufgabe mit diesem Server verbindet, landet dessen mächtiges TGT im Arbeitsspeicher. Der Hacker greift sich das Ticket aus dem RAM und zack – ihm gehört die gesamte Domäne.
+> **Der Traum eines Angreifers:** Wenn es ein Hacker schafft, Admin-Rechte auf einem Server mit Unconstrained Delegation zu bekommen, muss er sich nur noch zurücklehnen und warten. In dem Moment, in dem sich ein Domänen-Administrator (Domain Admin) für eine Routineaufgabe mit diesem Server verbindet, landet dessen mächtiges TGT im Arbeitsspeicher. Der Hacker greift sich das Ticket aus dem RAM und zack – ihm gehört die gesamte Domäne.
 
----
 
 ## 2. Constrained Delegation: Die Whitelist
 
@@ -52,8 +46,6 @@ Der Webserver bekommt jetzt keine Kopie deines Haupt-Ausweises (TGT) mehr. Wenn 
 
 Der Domain Controller prüft dann ein spezielles Attribut auf dem Konto des Webservers namens `msDS-AllowedToDelegateTo`. Wenn die Datenbank auf dieser Liste steht, rückt er das Ticket heraus. Der Webserver kann also nur noch dorthin, wo es ihm explizit erlaubt wurde.
 
----
-
 ## 3. Resource-Based Constrained Delegation (RBCD)
 
 Die klassische Constrained Delegation funktioniert zwar gut, sorgt aber für ordentlich Verwaltungsaufwand. Die Liste, wo es hingehen darf, liegt nämlich direkt beim Front-End-Webserver. Wenn das Datenbank-Team jetzt einen neuen Datenbank-Cluster aufbaut, müssen sie erst ein Ticket beim Webserver-Team eröffnen und warten, bis diese die Attribute des Webservers manuell aktualisieren.
@@ -61,8 +53,6 @@ Die klassische Constrained Delegation funktioniert zwar gut, sorgt aber für ord
 **Resource-Based Constrained Delegation (RBCD)** dreht den Spieß komplett um.
 
 Anstatt dass der Webserver auflistet, worauf er zugreifen darf, agiert die Backend-Datenbank selbst wie ein **Türsteher mit einer Gästeliste**. Die Datenbank entscheidet selbst, welche Front-End-Server sich ihr gegenüber als Nutzer ausgeben dürfen. Das verlagert die Kontrolle genau zu dem Team, das auch für den Schutz der Daten verantwortlich ist, was das Netzwerk-Management viel sauberer macht.
-
----
 
 ## Ein Blick unter die Haube: S4U2Self und S4U2Proxy
 
